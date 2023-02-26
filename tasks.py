@@ -8,9 +8,13 @@ from invoke import task
 PERSISTENT_WORKSPACES = ["dev", "prod"]
 ROOT_ZONE = "vajeh.co.uk"
 
+tf_dir = os.getenv("TF_DIR", os.getcwd())
+
 
 def load_project_conf():
-    with open(f"{os.getcwd()}/project.env.json", 'r') as public_conf_file:
+    conf_dir = tf_dir
+
+    with open(f"{conf_dir}/project.env.json", 'r') as public_conf_file:
         public_conf = json.load(public_conf_file)
 
     def get_param(k, default):
@@ -20,13 +24,12 @@ def load_project_conf():
         "PROJECT": get_param("PROJECT", Path(os.getcwd()).stem),
         "ENVIRONMENT": get_param("ENVIRONMENT", "dev"),
         "WORKSPACE": get_param("WORKSPACE", "dev"),
-        "TERRAFORM_DIR": get_param("TERRAFORM_DIR", "terraform"),
 
         "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
         "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
     }
     try:
-        with open(f"{os.getcwd()}/project.private.env.json", 'r') as private_conf_file:
+        with open(f"{conf_dir}/project.private.env.json", 'r') as private_conf_file:
             private_conf = json.load(private_conf_file)
             return conf | private_conf
 
@@ -47,12 +50,11 @@ def print_settings():
     print("Settings:")
     print(
         f"PROJECT: {config['PROJECT']}\nENVIRONMENT: {config['ENVIRONMENT']}\n"
-        f"WORKSPACE: {config['WORKSPACE']}\nTERRAFORM_DIR: {config['TERRAFORM_DIR']}\n")
+        f"WORKSPACE: {config['WORKSPACE']}\nTF_DIR: {tf_dir}\n")
 
 
 aws_account = "ptl" if config['ENVIRONMENT'] != "prod" else "prod"
 tf_state_bucket = f"{config['PROJECT']}-{aws_account}-terraform-state"
-tf_dir = config["TERRAFORM_DIR"]
 
 
 def parse_workspace_list(output):
@@ -154,8 +156,13 @@ def output(c):
 
 
 @task(workspace)
-def lock_provider(c):
+def lock_providers(c):
     print("This will take a while. Be patient!")
     c.run(f"terraform -chdir={tf_dir} providers lock "
           f"-platform=darwin_arm64 -platform=darwin_amd64 -platform=linux_amd64 -platform=windows_amd64",
           in_stream=False)
+
+
+@task()
+def clean(c):
+    c.run(f"rm -rf build")
