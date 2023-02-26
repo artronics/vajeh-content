@@ -13,7 +13,7 @@ terraform {
 }
 
 locals {
-  tier = "auth"
+  tier = "service"
 }
 
 locals {
