@@ -18,7 +18,7 @@ locals {
 
 locals {
   workspace = "shared"
-  prefix    = "${var.project}-${local.workspace}"
+  prefix    = var.project
 }
 
 provider "aws" {
